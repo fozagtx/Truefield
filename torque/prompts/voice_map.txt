@@ -1,0 +1,5 @@
+Map this technician close-out transcript to CloseOut JSON. Use null for anything not said.
+Never guess who removed the locks; if not stated, set loto_removed_by=null.
+CloseOut fields: technician, root_cause_confirmed, matches_diagnosis (bool), actions_done [str],
+parts_used [{part_no, qty}], actual_downtime_minutes (int), loto_removed_by, follow_up.
+Return valid JSON only.

@@ -54,7 +54,7 @@ def synthetic_temperature(signals: np.ndarray, seed: int = 11) -> np.ndarray:
     n0 = max(3, len(rms) // 10)
     rms0 = float(np.median(rms[:n0]))
     ratio = rms / rms0 if rms0 > 0 else np.ones_like(rms)
-    temp = 45.0 + 8.0 * np.clip(ratio - 1.0, 0, None) + rng.normal(0, 0.4, len(rms))
+    temp = 45.0 + 11.0 * np.clip(ratio - 1.0, 0, None) + rng.normal(0, 0.4, len(rms))
     return np.clip(temp, 20.0, 110.0).round(2)
 
 

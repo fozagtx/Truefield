@@ -1,0 +1,39 @@
+# GPU side on the AMD MI300X droplet: vLLM Gemma 4 server + one-shot autoencoder trainer (ROCm PyTorch).
+#   export HF_TOKEN=... VLLM_API_KEY=$(openssl rand -hex 24)
+#   docker compose -f deploy/docker-compose.vllm.yml up -d vllm
+#   docker compose -f deploy/docker-compose.vllm.yml run --rm trainer
+services:
+  vllm:
+    image: ${VLLM_IMAGE:-vllm/vllm-openai-rocm:gemma4}
+    network_mode: host
+    ipc: host
+    privileged: true
+    shm_size: 16g
+    cap_add: [SYS_ADMIN, SYS_PTRACE]
+    security_opt: [seccomp=unconfined]
+    devices: [/dev/kfd, /dev/dri]
+    group_add: [video]
+    environment:
+      HF_TOKEN: ${HF_TOKEN:?set HF_TOKEN}
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    command: >
+      --model ${VLLM_MODEL:-google/gemma-4-26B-A4B-it}
+      --served-model-name ${VLLM_MODEL:-google/gemma-4-26B-A4B-it}
+      --host 0.0.0.0 --port 8000 --api-key ${VLLM_API_KEY:?set VLLM_API_KEY}
+      --max-model-len 16384 --gpu-memory-utilization 0.75
+      --enable-auto-tool-choice --tool-call-parser gemma4 --reasoning-parser gemma4
+      --chat-template examples/tool_chat_template_gemma4.jinja
+      --limit-mm-per-prompt image=0,audio=0 --async-scheduling
+  trainer:
+    image: rocm/pytorch:latest
+    ipc: host
+    devices: [/dev/kfd, /dev/dri]
+    group_add: [video]
+    working_dir: /work
+    volumes:
+      - ..:/work
+    command: >
+      bash -c "pip install -q fastapi httpx jsonschema scipy pyyaml python-multipart &&
+               python -m torque.anomaly.train --out models/ae-v1.pt &&
+               python bench/ae_bench.py --epochs 50"

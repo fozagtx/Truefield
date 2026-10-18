@@ -1,0 +1,31 @@
+# Torque app: api (FastAPI orchestrator) + ui (Streamlit). Runs in mock mode with no .env.
+services:
+  api:
+    build: .
+    image: torque-app:latest
+    command: uvicorn torque.api.main:app --host 0.0.0.0 --port 8080
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATA_DIR: /app/data
+      MODEL_PATH: /app/models/ae-v1.pt
+    ports: ["8080:8080"]
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+  ui:
+    image: torque-app:latest
+    depends_on:
+      api:
+        condition: service_healthy
+    command: streamlit run ui/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
+    environment:
+      TORQUE_API_URL: http://api:8080
+    ports: ["8501:8501"]

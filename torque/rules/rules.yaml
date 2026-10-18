@@ -1,0 +1,22 @@
+# Torque deterministic rules (PRD §14). Thresholds are z-scores against the healthy baseline
+# (first 40% of the record), because IMS data is acceleration in g without calibrated velocity.
+version: 1
+severity:
+  R-SEV-1: {ae_consecutive: 3}                       # >= watch
+  R-SEV-2: {z_rms: 3.0, z_kurtosis: 4.0}             # >= warning
+  R-SEV-3: {z_rms: 6.0, z_env_fault: 8.0}            # >= alarm   (env_bpfo or env_bpfi)
+  R-SEV-4: {temp_c: 90.0, rms_rise_per_hour: 0.20, rms_rise_hours: 3}   # = critical
+hypothesis:
+  R-HYP-1: {z_min: 4.0, bands: {env_bpfo: outer_race, env_bpfi: inner_race, env_bsf: rolling_element, env_ftf: cage}}
+  R-HYP-2: {temp_rise_c: 15.0}                       # lubrication, if no fault band z >= 4
+safety:
+  R-SAFE-1:
+    - {energy_source: electrical, isolation_point: "Motor MCC breaker for PUMP-07 drive motor: open, lock and tag", verify: "Try-start at local push-button station; motor must not turn"}
+    - {energy_source: mechanical, isolation_point: "Shaft coupling: wait for zero rotation, then block coupling against rotation", verify: "Visual zero rotation; coupling block fitted"}
+  R-SAFE-2:
+    - {energy_source: stored, isolation_point: "Lubrication oil circulation pump: isolate, lock and tag; relieve circuit pressure", verify: "Oil circuit pressure gauge reads 0 bar"}
+  R-SAFE-3:
+    - {energy_source: thermal, isolation_point: "Bearing housing: allow cool-down before contact", verify: "IR thermometer reads < 45 °C on housing", min_temp_c: 60.0}
+priority: {critical: P1, alarm: P1, warning: P2, watch: P3, normal: P3}
+routing:
+  min_confidence: 0.6

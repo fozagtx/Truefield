@@ -1,0 +1,11 @@
+TORQUE CLOSE-OUT FORM  (PUMP-07 / BRG-1)
+
+WO: (as issued)
+Technician: Kwame Asante
+Root cause: Outer-race spalling on BRG-1
+Matches diagnosis: yes
+Actions done: Applied LOTO per LOTO-PUMP-07; Replaced bearing BRG-ZA2115; Flushed and refilled oil
+Parts used: BRG-ZA2115 x1; OIL-ISO68-5L x2
+Actual downtime minutes: 95
+LOTO removed by: Kwame Asante
+Follow up: Re-check vibration after 24 h

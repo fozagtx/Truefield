@@ -32,7 +32,7 @@ class Scorer:
             from torque.anomaly.train import train
 
             log.info("no matching model at %s, training now on %s", model_path, ds.label)
-            train(ds, model_path, epochs=300, device_pref=device_pref)
+            train(ds, model_path, epochs=100, device_pref=device_pref)
             ckpt = torch.load(model_path, map_location="cpu", weights_only=False)
         self.meta = ckpt["meta"]
         self.device, self.device_name = get_device(device_pref)

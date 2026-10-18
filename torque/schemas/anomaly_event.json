@@ -1,0 +1,18 @@
+{
+  "$id": "AnomalyEvent", "type": "object",
+  "required": ["event_id","asset_id","ts","score","threshold","features","rules"],
+  "properties": {
+    "event_id": {"type": "string"}, "asset_id": {"type": "string"}, "ts": {"type": "string"},
+    "score": {"type": "number"}, "threshold": {"type": "number"}, "consecutive": {"type": "integer"},
+    "model": {"type": "object", "properties": {"name": {"const": "ae-v1"}, "device": {"type": "string"}}},
+    "features": {"type": "object", "required": ["rms","peak","crest","kurtosis","env_bpfo","env_bpfi","env_bsf","env_ftf"]},
+    "rules": {"type": "object", "required": ["severity","fault_hypothesis","risk_level","route","fired_rules","required_safety_steps"],
+      "properties": {
+        "severity": {"enum": ["watch","warning","alarm","critical"]},
+        "fault_hypothesis": {"enum": ["outer_race","inner_race","rolling_element","cage","lubrication","unknown"]},
+        "risk_level": {"enum": ["low","medium","high"]},
+        "route": {"enum": ["auto_draft","supervisor"]},
+        "fired_rules": {"type": "array", "items": {"type": "string"}},
+        "required_safety_steps": {"type": "array", "items": {"type": "string"}}}}
+  }
+}

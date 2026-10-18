@@ -1,0 +1,16 @@
+{
+  "$id": "CloseOut", "type": "object",
+  "required": ["wo_id","completed_at","technician","root_cause_confirmed","actions_done","loto_removed_by","source"],
+  "properties": {
+    "wo_id": {"type": "string"}, "completed_at": {"type": "string", "minLength": 1},
+    "technician": {"type": "string", "minLength": 1}, "root_cause_confirmed": {"type": "string", "minLength": 1},
+    "matches_diagnosis": {"type": ["boolean","null"]},
+    "actions_done": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "parts_used": {"type": "array", "items": {"type": "object", "properties": {"part_no": {"type": "string"}, "qty": {"type": "integer"}}}},
+    "actual_downtime_minutes": {"type": ["integer","null"]},
+    "loto_removed_by": {"type": "string", "minLength": 1},
+    "follow_up": {"type": ["string","null"]},
+    "source": {"enum": ["photo","pdf","voice"]},
+    "raw_ref": {"type": ["string","null"]}
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$id": "WorkOrder", "type": "object",
+  "required": ["wo_id","event_id","asset_id","status","priority","title","steps","loto","parts","approval","downtime_estimate"],
+  "properties": {
+    "wo_id": {"type": "string"}, "event_id": {"type": "string"}, "asset_id": {"type": "string"},
+    "status": {"enum": ["draft","pending_approval","approved","issued","in_progress","closed","rejected"]},
+    "priority": {"enum": ["P1","P2","P3"]},
+    "title": {"type": "string"},
+    "steps": {"type": "array", "items": {"type": "object", "properties": {"n": {"type": "integer"}, "text": {"type": "string"}, "citation": {"type": ["string","null"]}}}},
+    "loto": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["energy_source","isolation_point","verify"],
+      "properties": {"energy_source": {"enum": ["electrical","mechanical","hydraulic","pneumatic","thermal","stored"]},
+        "isolation_point": {"type": "string"}, "verify": {"type": "string"}}}},
+    "parts": {"type": "array", "items": {"type": "object"}},
+    "downtime_estimate": {"type": "object"},
+    "approval": {"type": "object", "properties": {"required": {"type": "boolean"}, "reasons": {"type": "array", "items": {"type": "string"}},
+      "by": {"type": ["string","null"]}, "at": {"type": ["string","null"]}, "decision": {"enum": ["approved","edited","rejected",null]}}},
+    "evolus": {"type": "object"}
+  }
+}

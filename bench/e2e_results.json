@@ -1,0 +1,22 @@
+{
+  "runs": 5,
+  "modes": {
+    "llm": "mock",
+    "evolus": "mock",
+    "workflow": "mock",
+    "extractor": "mock",
+    "library": "mock",
+    "anomaly_device": "CPU",
+    "model_trained_on_device": "CPU",
+    "data_source": "SYNTHETIC",
+    "data_badge": "SYNTHETIC vibration (offline fallback) + temperature (synthetic)"
+  },
+  "alert_to_diagnosis_s": {
+    "p50": 0.01,
+    "p95": 0.055
+  },
+  "alert_to_work_order_s": {
+    "p50": 0.011,
+    "p95": 0.057
+  }
+}

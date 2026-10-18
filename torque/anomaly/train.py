@@ -28,7 +28,7 @@ def compute_matrices(ds: Dataset):
     return bands, feats
 
 
-def train(ds: Dataset, out: Path, epochs: int = 300, device_pref: str = "auto", seed: int = 0, precomputed=None) -> dict:
+def train(ds: Dataset, out: Path, epochs: int = 100, device_pref: str = "auto", seed: int = 0, precomputed=None) -> dict:
     torch.manual_seed(seed)
     np.random.seed(seed)
     device, device_name = get_device(device_pref)
@@ -40,14 +40,14 @@ def train(ds: Dataset, out: Path, epochs: int = 300, device_pref: str = "auto", 
     mu, sd = hb.mean(axis=0), hb.std(axis=0) + 1e-6
     xh = torch.tensor((hb - mu) / sd, dtype=torch.float32, device=device)
     model = AutoEncoder(n_in=bands.shape[1]).to(device)
-    opt = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+    opt = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
     lossf = torch.nn.MSELoss()
     t1 = time.perf_counter()
     model.train()
     for _ in range(epochs):
         perm = torch.randperm(len(xh), device=device)
-        for i in range(0, len(xh), 64):
-            b = xh[perm[i : i + 64]]
+        for i in range(0, len(xh), 32):
+            b = xh[perm[i : i + 32]]
             opt.zero_grad()
             loss = lossf(model(b), b)
             loss.backward()
@@ -91,7 +91,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", help="raw IMS folder (e.g. data/ims/2nd_test); default: DATA_DIR dataset")
     ap.add_argument("--out", default="models/ae-v1.pt")
-    ap.add_argument("--epochs", type=int, default=300)
+    ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--device", default="auto", choices=["auto", "cpu"])
     args = ap.parse_args()
     from torque.config import get_settings

@@ -1,0 +1,18 @@
+{
+  "epochs": 50,
+  "n_snapshots": 984,
+  "torch": "2.14.1+cpu",
+  "hip": null,
+  "cpu": {
+    "device": "CPU",
+    "train_seconds": 0.584,
+    "latency_ms_batch1": 0.0235,
+    "snapshots_per_s_batch1": 42591.7,
+    "latency_ms_batch1024": 0.0735,
+    "snapshots_per_s_batch1024": 13934375.8
+  },
+  "gpu": {
+    "device": null,
+    "note": "no ROCm/CUDA GPU visible; run on the MI300X droplet in rocm/pytorch"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "autoencoder": {
+    "epochs": 50,
+    "n_snapshots": 984,
+    "torch": "2.14.1+cpu",
+    "hip": null,
+    "cpu": {
+      "device": "CPU",
+      "train_seconds": 0.584,
+      "latency_ms_batch1": 0.0235,
+      "snapshots_per_s_batch1": 42591.7,
+      "latency_ms_batch1024": 0.0735,
+      "snapshots_per_s_batch1024": 13934375.8
+    },
+    "gpu": {
+      "device": null,
+      "note": "no ROCm/CUDA GPU visible; run on the MI300X droplet in rocm/pytorch"
+    }
+  },
+  "end_to_end": {
+    "runs": 5,
+    "modes": {
+      "llm": "mock",
+      "evolus": "mock",
+      "workflow": "mock",
+      "extractor": "mock",
+      "library": "mock",
+      "anomaly_device": "CPU",
+      "model_trained_on_device": "CPU",
+      "data_source": "SYNTHETIC",
+      "data_badge": "SYNTHETIC vibration (offline fallback) + temperature (synthetic)"
+    },
+    "alert_to_diagnosis_s": {
+      "p50": 0.01,
+      "p95": 0.055
+    },
+    "alert_to_work_order_s": {
+      "p50": 0.011,
+      "p95": 0.057
+    }
+  },
+  "vllm": {
+    "concurrency_1": null,
+    "concurrency_32": null
+  },
+  "note": "Numbers produced by the scripts in bench/. Fill GPU/vLLM rows by running them on the AMD MI300X droplet."
+}

@@ -10,7 +10,7 @@ log = logging.getLogger("torque.anomaly")
 
 
 class AutoEncoder(nn.Module):
-    def __init__(self, n_in: int = 64, hidden: int = 32, latent: int = 8):
+    def __init__(self, n_in: int = 32, hidden: int = 16, latent: int = 4):
         super().__init__()
         self.encoder = nn.Sequential(nn.Linear(n_in, hidden), nn.ReLU(), nn.Linear(hidden, latent), nn.ReLU())
         self.decoder = nn.Sequential(nn.Linear(latent, hidden), nn.ReLU(), nn.Linear(hidden, n_in))

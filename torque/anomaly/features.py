@@ -20,7 +20,7 @@ N_POINTS = 20480
 FAULT_FREQS_HZ = {"bpfo": 236.0, "bpfi": 297.0, "bsf": 278.0, "ftf": 15.0}
 BAND_HALF_WIDTH_HZ = 3.0
 ENVELOPE_BAND_HZ = (2000.0, 8000.0)
-N_SPECTRAL_BANDS = 64
+N_SPECTRAL_BANDS = 32
 FEATURE_NAMES = ["rms", "peak", "crest", "kurtosis", "env_bpfo", "env_bpfi", "env_bsf", "env_ftf"]
 
 

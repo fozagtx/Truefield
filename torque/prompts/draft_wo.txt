@@ -1,0 +1,9 @@
+From the input (AnomalyEvent, rules, Diagnosis), produce ONLY a WorkOrder JSON:
+- title: "<component> <likely_cause> on <asset_id>"
+- priority: P1 if severity in [alarm, critical], else P2 (watch->P3)
+- steps: numbered, each with a citation locator from the Diagnosis when available
+- loto: copy EVERY item in rules.required_safety_steps as structured entries; add others only if cited
+- parts: from Diagnosis.parts only
+- downtime_estimate: use the numbers provided in input.downtime_inputs; do not invent costs
+- approval.required = (route == "supervisor"); approval.reasons = rules.fired_rules that caused routing
+Return valid JSON only.
