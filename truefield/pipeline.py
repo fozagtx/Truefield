@@ -52,6 +52,8 @@ class ReplayState:
 
 class Truefield:
     def __init__(self, s: Settings):
+        if s.llm_provider == "do" and not s.model_access_key:
+            raise RuntimeError("LLM_PROVIDER=do but MODEL_ACCESS_KEY is empty: set it in .env (or use LLM_PROVIDER=auto for mock fallback)")
         self.s = s
         self.store = Store(s.data_dir / "truefield.db")
         self.ec = EvolusClient(s, self.store)
@@ -67,6 +69,7 @@ class Truefield:
     def modes(self) -> dict:
         return {
             "llm": self.s.llm_mode + (" (cached)" if self.s.demo_cache else ""),
+            "llm_model": {"do": self.s.model_name, "vllm": self.s.vllm_model, "evolus": self.s.evolus_agent_model}.get(self.s.llm_mode, "mock"),
             "evolus": "mock" if self.ec.mock else "live",
             "workflow": "live" if (not self.ec.mock and self.s.evolus_workflow_id) else "mock",
             "extractor": "live" if (not self.ec.mock and self.s.evolus_extractor_id) else "mock",
@@ -291,7 +294,10 @@ class Truefield:
         params = {"asset_id": ev["asset_id"], "route": ev["rules"]["route"]}  # no secrets in parameters
         callback = f"{self.s.public_base_url}/callback/evolus" if self.s.public_base_url else None
         raw, source, exec_id = None, None, None
+        workflow_live = not self.ec.mock and bool(self.s.evolus_workflow_id)
         try:
+            if not workflow_live and self.s.llm_mode != "mock":
+                raise EvolusError("Evolus workflow not configured; drafting with the primary LLM")
             exec_id = evwf.execute(self.ec, input_text, params, callback, mock_output=self.deterministic_draft(ev, dx))
             res = evwf.wait(self.ec, exec_id, self.store)
             raw = extract_json(evwf.output_text(res))

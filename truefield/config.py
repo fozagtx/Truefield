@@ -26,7 +26,11 @@ def _flag(name: str, default: str = "0") -> bool:
 
 @dataclass
 class Settings:
-    # AMD / vLLM
+    # Primary LLM: OpenAI-compatible inference API (DigitalOcean serverless inference by default)
+    model_access_key: str
+    model_base_url: str
+    model_name: str
+    # Optional alternative: our own vLLM (Gemma on AMD)
     vllm_base_url: str
     vllm_api_key: str
     vllm_model: str
@@ -64,10 +68,13 @@ class Settings:
 
     @property
     def llm_mode(self) -> str:
-        """Which backend answers diagnosis calls: evolus | vllm | mock."""
-        p = self.llm_provider
-        if p in {"evolus", "vllm", "mock"}:
+        """Which backend answers diagnosis calls: do | evolus | vllm | mock.
+        auto: MODEL_ACCESS_KEY set -> do (primary); else Evolus agent; else vLLM; else mock."""
+        p = "mock" if _flag("MOCK") else self.llm_provider  # MOCK=1 forces offline mode
+        if p in {"do", "evolus", "vllm", "mock"}:
             return p
+        if self.model_access_key:
+            return "do"
         if self.evolus_api_key and self.evolus_agent_model:
             return "evolus"
         if self.vllm_base_url:
@@ -82,18 +89,23 @@ def get_settings() -> Settings:
     model_path = Path(_env("MODEL_PATH", str(REPO_ROOT / "models" / "ae-v1.pt")))
     if not model_path.is_absolute():
         model_path = (REPO_ROOT / model_path).resolve()
+    app_id, agent_id = _env("EVOLUS_APP_ID"), _env("EVOLUS_AGENT_ID")
     return Settings(
+        model_access_key=_env("MODEL_ACCESS_KEY"),
+        model_base_url=_env("MODEL_BASE_URL", "https://inference.do-ai.run/v1").rstrip("/"),
+        model_name=_env("MODEL_NAME", "gpt-4o"),
         vllm_base_url=_env("VLLM_BASE_URL").rstrip("/"),
         vllm_api_key=_env("VLLM_API_KEY"),
         vllm_model=_env("VLLM_MODEL", "google/gemma-4-26B-A4B-it"),
         evolus_api_key=_env("EVOLUS_API_KEY"),
-        evolus_app_id=_env("EVOLUS_APP_ID"),
-        evolus_agent_id=_env("EVOLUS_AGENT_ID"),
-        evolus_agent_model=_env("EVOLUS_AGENT_MODEL"),
+        evolus_app_id=app_id,
+        evolus_agent_id=agent_id,
+        # derived: "<applicationId>:<agentId>" (override with EVOLUS_AGENT_MODEL if GET /v1/models differs)
+        evolus_agent_model=_env("EVOLUS_AGENT_MODEL") or (f"{app_id}:{agent_id}" if app_id and agent_id else ""),
         evolus_library_id=_env("EVOLUS_LIBRARY_ID"),
         evolus_workflow_id=_env("EVOLUS_WORKFLOW_ID"),
         evolus_extractor_id=_env("EVOLUS_EXTRACTOR_ID"),
-        evolus_extractor_agent_id=_env("EVOLUS_EXTRACTOR_AGENT_ID"),
+        evolus_extractor_agent_id=_env("EVOLUS_EXTRACTOR_AGENT_ID") or agent_id,
         evolus_rest_base=_env("EVOLUS_REST_BASE", "https://api.evolus.ai/api/v1").rstrip("/"),
         evolus_chat_base=_env("EVOLUS_CHAT_BASE", "https://api.evolus.ai/v1").rstrip("/"),
         evolus_minutes_tool=_env("EVOLUS_MINUTES_TOOL", "minutes"),

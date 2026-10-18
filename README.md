@@ -7,7 +7,7 @@ AMD Developer Hackathon ACT III · Track 1 Intelligent Industry · Evolus Busine
 Truefield works in four steps:
 
 1. **Detect.** A PyTorch autoencoder (ROCm on AMD MI300X, CPU fallback) plus deterministic physics features (RMS, kurtosis, BPFO envelope energy) flags a failing bearing early, on replayed **NASA IMS Set 2** run-to-failure data.
-2. **Explain.** Gemma 4, served by our own vLLM endpoint on AMD and used as the model behind the Evolus agent *Truefield Diagnostician*, explains the likely cause and cites the manual and past work orders. Output is strict JSON.
+2. **Explain.** An LLM (default `gpt-4o` through an OpenAI-compatible inference API) explains the likely cause and cites the manual and past work orders. Output is strict JSON, validated against a schema. Optional alternatives: the Evolus agent *Truefield Diagnostician*, or our own vLLM endpoint (e.g. Gemma on AMD).
 3. **Draft and gate.** An Evolus workflow drafts a work order. Lockout/tagout (LOTO) steps always come from a **deterministic rules engine** and the LLM can't remove them. High-risk or low-confidence cases need **supervisor approval**.
 4. **Close out.** The technician closes the job with a photo, PDF or voice note (Evolus extractor / AI Tool `minutes`). The result becomes structured asset history and is fed back into the knowledge library.
 
@@ -79,7 +79,7 @@ flowchart LR
 | Features (FR-2) | `truefield/anomaly/features.py`: Hilbert envelope of the 2–8 kHz band; energy within ±3 Hz of BPFO 236 / BPFI 297 / BSF 278 / FTF 15 Hz |
 | Anomaly model (FR-3) | `truefield/anomaly/{model,train,score}.py`: AE 32→16→4→16→32 on log-FFT bands, trained on the first 40% (healthy); threshold is the p99.5 of the healthy error; 3-snapshot debounce. Device auto-detect: `cuda` (ROCm/HIP or CUDA), else CPU |
 | Rules (FR-4) | `truefield/rules/{rules.yaml,engine.py}`: R-SEV-1..4, R-HYP-1..3, R-RISK, R-ROUTE, R-SAFE-1..3, R-PRI |
-| LLM (FR-5) | `truefield/llm/{client,diagnose}.py`: OpenAI-compatible (Evolus agent or vLLM direct), schema validation, one repair retry, then `needs_human`; citation docs checked against the library |
+| LLM (FR-5) | `truefield/llm/{client,diagnose}.py`: OpenAI-compatible; primary = `MODEL_BASE_URL` with `MODEL_ACCESS_KEY` (system prompt sent as role `developer`; `response_format` JSON mode, dropped automatically if the endpoint rejects it); optional Evolus agent or vLLM; schema validation, one repair retry, then `needs_human`; citation docs checked against the library |
 | Evolus (FR-6/8/9) | `truefield/evolus/{client,agent,library,workflow,extractor,tools}.py`: timeout + one retry, audit log, mock mode with no key |
 | Orchestration | `truefield/pipeline.py`, `truefield/api/main.py`, `truefield/store/db.py`, `truefield/kpi.py` |
 | UI | `ui/app.py` (Streamlit) |
@@ -102,61 +102,54 @@ flowchart LR
 
 ---
 
-## Full setup: AMD + Evolus
+## Setup
 
-### 1. AMD MI300X droplet (ROCm)
+### 1. Primary LLM (one key)
 
 ```bash
-git clone https://github.com/fozagtx/Truefield && cd Truefield
-HF_TOKEN=hf_xxx ./deploy/serve_gemma.sh          # vLLM Gemma 4 26B-A4B-it, prints VLLM_API_KEY
-# or: docker compose -f deploy/docker-compose.vllm.yml up -d vllm
-DATA_DIR=./data ./scripts/download_ims.sh          # 1.08 GB NASA IMS -> data/ims/2nd_test (needs p7zip-full / unrar)
-python scripts/make_demo_slice.py --stride 2       # data/demo/ims_set2_b1.npz (real data, not committed)
-./deploy/train_rocm.sh                             # trains models/ae-v1.pt on the MI300X, logs the device name, runs bench/ae_bench.py
-VLLM_API_KEY=... ./bench/vllm_bench.sh             # vllm bench serve at concurrency 1 and 32
-python bench/collect_results.py                    # -> bench/results.json (shown on the Bench tab)
+cp .env.example .env      # set MODEL_ACCESS_KEY (MODEL_BASE_URL / MODEL_NAME default to https://inference.do-ai.run/v1 and gpt-4o)
+docker compose up --build
 ```
 
-Open port 8000 to Evolus (restrict by IP if you can). Never run vLLM without `--api-key`. Fallback models: `google/gemma-4-E4B-it` (fastest) and `google/gemma-4-31B-it`. If attention errors appear on ROCm, set `VLLM_EXTRA_ARGS="--attention-backend TRITON_ATTN"`.
+With `MODEL_ACCESS_KEY` set, diagnosis and work-order drafting use the live model. The UI badge shows the model name. Evolus blocks stay in mock mode until you configure them.
 
-### 2. Evolus event workspace
+### 2. Evolus event workspace (optional)
 
-1. Create the workspace **from the event link** (evolus.ai/en/hackathon).
-2. **Your models:** add `gemma4-amd` with base URL `http://<DROPLET_IP>:8000/v1`, model `google/gemma-4-26B-A4B-it`, and API key = `VLLM_API_KEY`. Test the connection.
-3. **API key:** create one; the API keys page shows the space ID, which goes into `EVOLUS_APP_ID`.
-4. **Knowledge library** `truefield-kb` (language `en`): set `EVOLUS_LIBRARY_ID` and run `python scripts/seed_library.py`. Optionally upload a public bearing-damage guide PDF after checking its licence.
-5. **Agent** `Truefield Diagnostician`: model `gemma4-amd`, attach `truefield-kb`, use the system prompt from `truefield/prompts/diagnostician.txt`, and set temperature 0.2 in the agent settings. Get `EVOLUS_AGENT_MODEL` (`<appId>:<agentId>`) from `GET https://api.evolus.ai/v1/models`.
-6. **Workflow** `Draft Work Order`: API trigger; parameters `asset_id` and `route`; an agent step with `truefield/prompts/draft_wo.txt`; a condition on `route`; a webhook step. **Turn it on** (otherwise you get a 409). Set `EVOLUS_WORKFLOW_ID`. For callbacks, set `PUBLIC_BASE_URL` (e.g. a cloudflared tunnel) and `TRUEFIELD_CALLBACK_KEY`; otherwise the app polls.
-7. **Extractor** `Close-out form`: JSON output with the CloseOut fields (`truefield/schemas/closeout.json`). Set `EVOLUS_EXTRACTOR_ID` and `EVOLUS_EXTRACTOR_AGENT_ID`.
-8. Copy `.env.example` → `.env`, fill it in, and run `docker compose up`. The UI badges switch from `mock` to `live`. Optionally run `python scripts/record_demo_cache.py` for a cached backup run (`DEMO_CACHE=1`).
+1. Create the workspace **from the event link** (evolus.ai/en/hackathon), then create an API key. The API keys page shows the space ID (`EVOLUS_APP_ID`).
+2. **Knowledge library** `truefield-kb` (language `en`): set `EVOLUS_LIBRARY_ID` and run `python scripts/seed_library.py`.
+3. **Agent** `Truefield Diagnostician`: attach `truefield-kb`, use the system prompt in `truefield/prompts/diagnostician.txt`, temperature 0.2. Set `EVOLUS_AGENT_ID`; the chat model id `<appId>:<agentId>` is derived from it.
+4. **Workflow** `Draft Work Order`: API trigger; parameters `asset_id` and `route`; an agent step with `truefield/prompts/draft_wo.txt`; a webhook step. **Turn it on** (otherwise you get a 409). Set `EVOLUS_WORKFLOW_ID`. The app polls for the result. For callbacks, set `PUBLIC_BASE_URL` and `TRUEFIELD_CALLBACK_KEY`.
+5. **Extractor** `Close-out form`: JSON output with the CloseOut fields (`truefield/schemas/closeout.json`). Set `EVOLUS_EXTRACTOR_ID`; it is assumed to belong to `EVOLUS_AGENT_ID`.
+
+When `MODEL_ACCESS_KEY` is set, the inference API answers diagnosis calls. Set `LLM_PROVIDER=evolus` to route them through the Evolus agent instead.
+
+### 3. AMD GPU (optional): real data, ROCm training, own vLLM
+
+```bash
+DATA_DIR=./data ./scripts/download_ims.sh          # 1.08 GB NASA IMS -> data/ims/2nd_test (needs p7zip-full / unrar)
+python scripts/make_demo_slice.py --stride 2       # data/demo/ims_set2_b1.npz (real data, not committed)
+./deploy/train_rocm.sh                             # trains models/ae-v1.pt on the MI300X and runs bench/ae_bench.py
+HF_TOKEN=hf_xxx ./deploy/serve_gemma.sh            # optional vLLM Gemma endpoint; use with LLM_PROVIDER=vllm VLLM_BASE_URL=... VLLM_API_KEY=...
+python bench/collect_results.py                    # -> bench/results.json (Bench tab)
+```
 
 ### Environment variables
 
+`.env.example` lists only the essentials:
+
 | Variable | Purpose | Default |
 |---|---|---|
-| `VLLM_BASE_URL` | vLLM OpenAI-compatible base, e.g. `http://<ip>:8000/v1` (used when `LLM_PROVIDER=vllm`, or `auto` without Evolus) | empty → mock |
-| `VLLM_API_KEY` | vLLM `--api-key` | |
-| `VLLM_MODEL` | served model name | `google/gemma-4-26B-A4B-it` |
-| `HF_TOKEN` | Hugging Face token (droplet only) | |
+| `MODEL_ACCESS_KEY` | Bearer key for the primary LLM API; empty → mock LLM | |
+| `MODEL_BASE_URL` | OpenAI-compatible base URL | `https://inference.do-ai.run/v1` |
+| `MODEL_NAME` | model | `gpt-4o` |
 | `EVOLUS_API_KEY` | Evolus key; empty → all Evolus calls run in mock mode | |
 | `EVOLUS_APP_ID` | space ID → `X-Application-Id` | |
-| `EVOLUS_AGENT_ID` | Truefield Diagnostician agent ID | |
-| `EVOLUS_AGENT_MODEL` | `<applicationId>:<agentId>` for `/v1/chat/completions` | |
-| `EVOLUS_LIBRARY_ID` | knowledge library ID | |
-| `EVOLUS_WORKFLOW_ID` | Draft Work Order workflow ID | |
-| `EVOLUS_EXTRACTOR_ID` / `EVOLUS_EXTRACTOR_AGENT_ID` | close-out extractor and its owning agent | |
-| `EVOLUS_REST_BASE` / `EVOLUS_CHAT_BASE` | API bases | `https://api.evolus.ai/api/v1` / `https://api.evolus.ai/v1` |
-| `EVOLUS_MINUTES_TOOL` | AI Tool slug for voice notes | `minutes` |
-| `LLM_PROVIDER` | `auto` / `evolus` / `vllm` / `mock` | `auto` |
-| `PUBLIC_BASE_URL` | public API URL for the workflow `callbackUrl` | empty → polling |
-| `TRUEFIELD_CALLBACK_KEY` | checked on `/callback/evolus` (`X-Truefield-Key`) | |
-| `DEMO_CACHE` / `DEMO_CACHE_RECORD` | replay / record LLM responses | `0` |
-| `COST_PER_HOUR_USD` | downtime cost (Siemens 2024 FMCG) | `36000` |
-| `PLANNED_REPAIR_MINUTES` / `UNPLANNED_BASELINE_MINUTES` | illustrative cost-avoided assumptions | `90` / `480` |
-| `DATA_DIR` / `MODEL_PATH` | data folder / AE weights | `./data` / `./models/ae-v1.pt` |
-| `TRUEFIELD_DATASET` | `auto` / `demo` / `raw` / `synthetic` | `auto` |
-| `AUTO_PIPELINE` | event → diagnosis → work order automatically | `1` |
-| `MOCK_GUARDRAIL_DEMO` | the mock model tries to downgrade severity (shows the guardrail) | `1` |
+| `EVOLUS_AGENT_ID` | Truefield Diagnostician agent (chat model `<appId>:<agentId>` and extractor owner are derived) | |
+| `EVOLUS_WORKFLOW_ID` | Draft Work Order workflow | |
+| `EVOLUS_EXTRACTOR_ID` | close-out extractor | |
+| `EVOLUS_LIBRARY_ID` | knowledge library | |
+
+Everything else has a code default in `truefield/config.py` and can still be overridden with an env var. Examples: `LLM_PROVIDER` (`auto`/`do`/`evolus`/`vllm`/`mock`), `VLLM_BASE_URL`, `VLLM_API_KEY`, `PUBLIC_BASE_URL`, `DEMO_CACHE`, `COST_PER_HOUR_USD`, `TRUEFIELD_DATASET`.
 
 ### Evolus endpoints still to confirm
 
