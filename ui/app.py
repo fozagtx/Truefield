@@ -1,4 +1,4 @@
-"""Torque Streamlit UI: Technician / Supervisor / Manager / Bench tabs."""
+"""Truefield Streamlit UI: Technician / Supervisor / Manager / Bench tabs."""
 from __future__ import annotations
 
 import json
@@ -10,8 +10,8 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
-API = os.environ.get("TORQUE_API_URL", "http://localhost:8080").rstrip("/")
-st.set_page_config(page_title="Torque: Maintenance Copilot", page_icon="🔧", layout="wide")
+API = os.environ.get("TRUEFIELD_API_URL", "http://localhost:8080").rstrip("/")
+st.set_page_config(page_title="Truefield: Maintenance Copilot", page_icon="🔧", layout="wide")
 
 
 def api(method: str, path: str, **kw):
@@ -33,7 +33,7 @@ if code != 200:
     st.stop()
 modes = health["modes"]
 
-st.markdown("## 🔧 Torque: maintenance copilot")
+st.markdown("## 🔧 Truefield: maintenance copilot")
 st.caption("Turns a vibration spike into a safe, signed-off work order in under two minutes. AMD × Gemma × Evolus.")
 b1, b2, b3, b4 = st.columns(4)
 b1.info(f"**Data:** {modes['data_badge']}")
@@ -55,7 +55,7 @@ with st.sidebar:
         api("POST", "/replay/stop")
     if st.button("Reset demo state", width="stretch"):
         api("POST", "/reset")
-    live = st.toggle("Live refresh (2 s)", value=os.environ.get("TORQUE_UI_LIVE", "1") == "1")
+    live = st.toggle("Live refresh (2 s)", value=os.environ.get("TRUEFIELD_UI_LIVE", "1") == "1")
     _, rs = api("GET", "/replay/status")
     st.progress(min(1.0, (rs["idx"] + 1) / rs["total"]), text=f"snapshot {rs['idx'] + 1}/{rs['total']} {'(running)' if rs['running'] else ''}")
     st.caption(f"API: {API}")
@@ -219,7 +219,7 @@ with tabs[2]:
     _, k = api("GET", "/kpi", params={"full_eval": full})
     ev_full = k.get("full_record_eval") or {}
     c = st.columns(4)
-    c[0].metric("Torque lead time (full record)", f"{ev_full.get('torque_first_alert_lead_h', '–')} h",
+    c[0].metric("Truefield lead time (full record)", f"{ev_full.get('truefield_first_alert_lead_h', '–')} h",
                 delta=f"+{ev_full.get('hours_gained_vs_naive')} h vs naive" if ev_full.get("hours_gained_vs_naive") is not None else None)
     c[1].metric("Naive 2× RMS alarm lead", f"{ev_full.get('naive_2x_rms_lead_h', '–')} h")
     tw = k["time_to_wo_s"]

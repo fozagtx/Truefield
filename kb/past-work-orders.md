@@ -1,5 +1,5 @@
 # Past work orders (SYNTHETIC history for the demo)
-> These 12 historic work orders are synthetic, written for the Torque demo. They are labelled synthetic in the UI and README.
+> These 12 historic work orders are synthetic, written for the Truefield demo. They are labelled synthetic in the UI and README.
 
 ## WO-0001 (2025-03-04) PUMP-07: Outer-race spalling on BRG-1
 - Evidence: Envelope peak at BPFO 236 Hz, kurtosis 6.1

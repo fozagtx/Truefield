@@ -6,5 +6,5 @@ docker run -it --rm --device=/dev/kfd --device=/dev/dri --group-add video --ipc=
   -v "$PWD":/work -w /work rocm/pytorch:latest \
   bash -c "pip install -q fastapi httpx jsonschema scipy pyyaml python-multipart && \
            python -c 'import torch; print(\"cuda available:\", torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"\", \"hip\", torch.version.hip)' && \
-           python -m torque.anomaly.train --out models/ae-v1.pt ${*:-} && \
+           python -m truefield.anomaly.train --out models/ae-v1.pt ${*:-} && \
            python bench/ae_bench.py --epochs 50"

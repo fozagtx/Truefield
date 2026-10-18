@@ -2,7 +2,7 @@
 POST /memories/{libraryId}/documents/import-url, GET /memories/{libraryId}/documents."""
 from __future__ import annotations
 
-from torque.evolus.client import EvolusClient
+from truefield.evolus.client import EvolusClient
 
 
 def upload_document(c: EvolusClient, name: str, content: bytes, mime: str = "text/markdown") -> dict:

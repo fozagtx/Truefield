@@ -1,6 +1,6 @@
 import pytest
 
-from torque.rules.engine import RulesInput, _rms_rising, evaluate, max_severity, merge_invariants, route, sev_rank
+from truefield.rules.engine import RulesInput, _rms_rising, evaluate, max_severity, merge_invariants, route, sev_rank
 
 ASSET = {"criticality": "B", "rotating": True, "lube_loop": True}
 

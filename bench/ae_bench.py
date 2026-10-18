@@ -11,7 +11,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from torque.anomaly.model import AutoEncoder, get_device  # noqa: E402
+from truefield.anomaly.model import AutoEncoder, get_device  # noqa: E402
 
 
 def run(device: torch.device, x: np.ndarray, epochs: int, batch_infer: int = 1) -> dict:

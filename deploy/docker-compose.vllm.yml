@@ -35,5 +35,5 @@ services:
       - ..:/work
     command: >
       bash -c "pip install -q fastapi httpx jsonschema scipy pyyaml python-multipart &&
-               python -m torque.anomaly.train --out models/ae-v1.pt &&
+               python -m truefield.anomaly.train --out models/ae-v1.pt &&
                python bench/ae_bench.py --epochs 50"

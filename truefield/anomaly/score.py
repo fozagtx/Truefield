@@ -9,11 +9,11 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from torque.anomaly.features import FEATURE_NAMES, extract_features, spectral_bands
-from torque.anomaly.model import AutoEncoder, get_device
-from torque.data.dataset import Dataset
+from truefield.anomaly.features import FEATURE_NAMES, extract_features, spectral_bands
+from truefield.anomaly.model import AutoEncoder, get_device
+from truefield.data.dataset import Dataset
 
-log = logging.getLogger("torque.anomaly")
+log = logging.getLogger("truefield.anomaly")
 
 
 class Scorer:
@@ -29,7 +29,7 @@ class Scorer:
                 log.warning("model %s was trained on %s; retraining for %s", model_path, ckpt["meta"].get("trained_on"), ds.label)
                 ckpt = None
         if ckpt is None:
-            from torque.anomaly.train import train
+            from truefield.anomaly.train import train
 
             log.info("no matching model at %s, training now on %s", model_path, ds.label)
             train(ds, model_path, epochs=100, device_pref=device_pref)

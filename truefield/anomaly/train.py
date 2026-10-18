@@ -1,7 +1,7 @@
 """Train the autoencoder on the healthy window (first 40%) and save models/ae-v1.pt.
 
-  python -m torque.anomaly.train --out models/ae-v1.pt                 # uses DATA_DIR dataset (or synthetic)
-  python -m torque.anomaly.train --data data/ims/2nd_test --out models/ae-v1.pt   # raw IMS on the droplet
+  python -m truefield.anomaly.train --out models/ae-v1.pt                 # uses DATA_DIR dataset (or synthetic)
+  python -m truefield.anomaly.train --data data/ims/2nd_test --out models/ae-v1.pt   # raw IMS on the droplet
 """
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from torque.anomaly.features import FEATURE_NAMES, extract_features, feature_vector, spectral_bands
-from torque.anomaly.model import AutoEncoder, get_device
-from torque.data.dataset import Dataset, load_dataset, synthetic_temperature, load_raw_ims
+from truefield.anomaly.features import FEATURE_NAMES, extract_features, feature_vector, spectral_bands
+from truefield.anomaly.model import AutoEncoder, get_device
+from truefield.data.dataset import Dataset, load_dataset, synthetic_temperature, load_raw_ims
 
-log = logging.getLogger("torque.anomaly")
+log = logging.getLogger("truefield.anomaly")
 HEALTHY_FRACTION = 0.4
 THRESHOLD_PERCENTILE = 99.5
 
@@ -94,7 +94,7 @@ def main():
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--device", default="auto", choices=["auto", "cpu"])
     args = ap.parse_args()
-    from torque.config import get_settings
+    from truefield.config import get_settings
 
     if args.data:
         sigs, ts = load_raw_ims(Path(args.data))

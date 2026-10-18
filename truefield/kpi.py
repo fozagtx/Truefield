@@ -6,7 +6,7 @@ from datetime import datetime
 
 import numpy as np
 
-from torque.rules import engine
+from truefield.rules import engine
 
 _eval_cache: dict = {}
 _eval_lock = threading.Lock()
@@ -39,12 +39,12 @@ def evaluate_lead_time(t) -> dict:
         return None if i is None else round((end - t.ds.timestamps[i]).total_seconds() / 3600, 2)
 
     res = {"dataset": t.ds.label, "source": t.ds.source, "end_of_test": end.isoformat(),
-           "torque_first_alert_ts": t.ds.timestamps[first_watch].isoformat() if first_watch is not None else None,
-           "torque_first_alert_lead_h": hours(first_watch), "torque_first_alarm_lead_h": hours(first_alarm),
+           "truefield_first_alert_ts": t.ds.timestamps[first_watch].isoformat() if first_watch is not None else None,
+           "truefield_first_alert_lead_h": hours(first_watch), "truefield_first_alarm_lead_h": hours(first_alarm),
            "naive_2x_rms_ts": t.ds.timestamps[naive].isoformat() if naive is not None else None,
            "naive_2x_rms_lead_h": hours(naive)}
-    if res["torque_first_alert_lead_h"] is not None and res["naive_2x_rms_lead_h"] is not None:
-        res["hours_gained_vs_naive"] = round(res["torque_first_alert_lead_h"] - res["naive_2x_rms_lead_h"], 2)
+    if res["truefield_first_alert_lead_h"] is not None and res["naive_2x_rms_lead_h"] is not None:
+        res["hours_gained_vs_naive"] = round(res["truefield_first_alert_lead_h"] - res["naive_2x_rms_lead_h"], 2)
     with _eval_lock:
         _eval_cache[key] = res
     return res
@@ -64,8 +64,8 @@ def compute(t) -> dict:
     session = {}
     if events:
         first = min(events, key=lambda e: e["ts"])
-        session["torque_first_alert_ts"] = first["ts"]
-        session["torque_first_alert_lead_h"] = round((t.ds.end_of_test - datetime.fromisoformat(first["ts"])).total_seconds() / 3600, 2)
+        session["truefield_first_alert_ts"] = first["ts"]
+        session["truefield_first_alert_lead_h"] = round((t.ds.end_of_test - datetime.fromisoformat(first["ts"])).total_seconds() / 3600, 2)
     if t.replay.naive_alarm_idx is not None:
         ts = t.ds.timestamps[t.replay.naive_alarm_idx]
         session["naive_2x_rms_ts"] = ts.isoformat()
@@ -86,7 +86,7 @@ def compute(t) -> dict:
         "work_orders": {s: len(st.list_wos(s)) for s in ("pending_approval", "draft", "issued", "closed", "rejected")},
         "cost_avoided_per_prevented_failure_usd": di["cost_avoided_usd"],
         "cost_assumptions": di["assumptions"],
-        "methodology": ("Lead time = end of test minus first Torque alert (data time). Naive baseline = first snapshot with RMS >= 2x healthy mean RMS. "
+        "methodology": ("Lead time = end of test minus first Truefield alert (data time). Naive baseline = first snapshot with RMS >= 2x healthy mean RMS. "
                         "Time to WO = wall-clock from AnomalyEvent creation to WorkOrder stored. Validity = diagnoses valid against the schema on the first try. "
                         "Citation rate = diagnoses with >=1 citation to a known library document. Guardrail catches = blocked severity downgrades, LOTO omissions, unknown parts."),
     }

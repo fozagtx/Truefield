@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from torque.evolus.client import EvolusClient
+from truefield.evolus.client import EvolusClient
 
 SAMPLE_TRANSCRIPT = (
     "Close-out for the PUMP-07 job. Technician Kwame Asante. Replaced the drive-end bearing, "

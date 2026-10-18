@@ -1,9 +1,9 @@
 """Validation + retry + needs_human fallback with a scripted fake model."""
 import json
 
-from torque.config import get_settings
-from torque.evolus.client import EvolusClient
-from torque.llm import diagnose as D
+from truefield.config import get_settings
+from truefield.evolus.client import EvolusClient
+from truefield.llm import diagnose as D
 
 EVENT = {"event_id": "EV-x", "asset_id": "PUMP-07/BRG-1", "ts": "2004-02-18T10:00:00", "score": 5.0, "threshold": 1.0,
          "features": {"rms": 0.2, "peak": 1, "crest": 5, "kurtosis": 8, "env_bpfo": 100, "env_bpfi": 0.1, "env_bsf": 0.1, "env_ftf": 0.1},

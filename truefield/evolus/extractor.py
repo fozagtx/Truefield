@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 
-from torque.evolus.client import EvolusClient
+from truefield.evolus.client import EvolusClient
 
 SAMPLE_FORM = {
     "technician": "Kwame Asante",

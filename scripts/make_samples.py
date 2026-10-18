@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 OUT = Path(__file__).resolve().parent.parent / "samples"
 FORM = [
-    "TORQUE CLOSE-OUT FORM  (PUMP-07 / BRG-1)",
+    "TRUEFIELD CLOSE-OUT FORM  (PUMP-07 / BRG-1)",
     "",
     "WO: (as issued)",
     "Technician: Kwame Asante",

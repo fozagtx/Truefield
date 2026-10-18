@@ -13,9 +13,9 @@ import time
 
 import httpx
 
-from torque.config import Settings
+from truefield.config import Settings
 
-log = logging.getLogger("torque.evolus")
+log = logging.getLogger("truefield.evolus")
 
 
 class EvolusError(RuntimeError):

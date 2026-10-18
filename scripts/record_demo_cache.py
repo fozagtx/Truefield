@@ -9,11 +9,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 os.environ["DEMO_CACHE_RECORD"] = "1"
 os.environ["DEMO_CACHE"] = "0"
 os.environ["AUTO_PIPELINE"] = "0"
-from torque.config import get_settings  # noqa: E402
-from torque.pipeline import Torque  # noqa: E402
+from truefield.config import get_settings  # noqa: E402
+from truefield.pipeline import Truefield  # noqa: E402
 
 if __name__ == "__main__":
-    t = Torque(get_settings())
+    t = Truefield(get_settings())
     t.store.reset()
     t.start_replay(speed=1000, start=int(0.5 * t.ds.n))
     while t.replay.running and not any(e["rules"]["severity"] in ("alarm", "critical") for e in t.store.list_events()):

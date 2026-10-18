@@ -6,7 +6,7 @@ import logging
 import torch
 from torch import nn
 
-log = logging.getLogger("torque.anomaly")
+log = logging.getLogger("truefield.anomaly")
 
 
 class AutoEncoder(nn.Module):

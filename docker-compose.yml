@@ -1,9 +1,9 @@
-# Torque app: api (FastAPI orchestrator) + ui (Streamlit). Runs in mock mode with no .env.
+# Truefield app: api (FastAPI orchestrator) + ui (Streamlit). Runs in mock mode with no .env.
 services:
   api:
     build: .
-    image: torque-app:latest
-    command: uvicorn torque.api.main:app --host 0.0.0.0 --port 8080
+    image: truefield-app:latest
+    command: uvicorn truefield.api.main:app --host 0.0.0.0 --port 8080
     env_file:
       - path: .env
         required: false
@@ -21,11 +21,11 @@ services:
       retries: 12
       start_period: 30s
   ui:
-    image: torque-app:latest
+    image: truefield-app:latest
     depends_on:
       api:
         condition: service_healthy
     command: streamlit run ui/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
     environment:
-      TORQUE_API_URL: http://api:8080
+      TRUEFIELD_API_URL: http://api:8080
     ports: ["8501:8501"]

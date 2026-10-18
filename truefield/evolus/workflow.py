@@ -7,7 +7,7 @@ import json
 import time
 import uuid
 
-from torque.evolus.client import EvolusClient, EvolusError
+from truefield.evolus.client import EvolusClient, EvolusError
 
 _MOCK_RESULTS: dict[str, dict] = {}
 
@@ -27,7 +27,7 @@ def execute(c: EvolusClient, input_text: str, parameters: dict, callback_url: st
         "parameters": json.dumps(parameters),
     }
     if callback_url:
-        form.update({"callbackUrl": callback_url, "callbackMethod": "POST", "callbackApiKeyName": "X-Torque-Key"})
+        form.update({"callbackUrl": callback_url, "callbackMethod": "POST", "callbackApiKeyName": "X-Truefield-Key"})
         if c.s.callback_key:
             form["callbackApiKey"] = c.s.callback_key
     # multipart/form-data: send fields as (None, value) file tuples so httpx encodes multipart.

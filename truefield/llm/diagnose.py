@@ -6,10 +6,10 @@ import json
 import re
 from pathlib import Path
 
-from torque.config import REPO_ROOT, Settings
-from torque.evolus.client import EvolusClient
-from torque.llm.client import chat, extract_json, prompt
-from torque.schemas import errors as schema_errors
+from truefield.config import REPO_ROOT, Settings
+from truefield.evolus.client import EvolusClient
+from truefield.llm.client import chat, extract_json, prompt
+from truefield.schemas import errors as schema_errors
 
 KB_DIR = REPO_ROOT / "kb"
 EXTRA_DOCS = ["OSHA 29 CFR 1910.147", "osha-1910-147"]

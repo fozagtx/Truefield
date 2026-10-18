@@ -3,7 +3,7 @@
 Priority: (1) preprocessed demo slice  DATA_DIR/demo/ims_set2_b1.npz  (scripts/make_demo_slice.py)
           (2) raw IMS Set 2 folder       DATA_DIR/ims/2nd_test         (scripts/download_ims.sh)
           (3) synthetic fallback (offline demo), clearly labelled SYNTHETIC.
-Force one with TORQUE_DATASET=demo|raw|synthetic.
+Force one with TRUEFIELD_DATASET=demo|raw|synthetic.
 
 The housing temperature channel is ALWAYS synthetic (IMS has no temperature): it is derived from
 the measured vibration RMS ratio to the healthy baseline (friction heating proxy), plus noise.
@@ -17,10 +17,10 @@ from pathlib import Path
 
 import numpy as np
 
-from torque.anomaly.features import FS_HZ
-from torque.data import synthetic
+from truefield.anomaly.features import FS_HZ
+from truefield.data import synthetic
 
-log = logging.getLogger("torque.data")
+log = logging.getLogger("truefield.data")
 
 
 @dataclass

@@ -4,9 +4,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from torque.config import get_settings  # noqa: E402
-from torque.evolus import library  # noqa: E402
-from torque.evolus.client import EvolusClient  # noqa: E402
+from truefield.config import get_settings  # noqa: E402
+from truefield.evolus import library  # noqa: E402
+from truefield.evolus.client import EvolusClient  # noqa: E402
 
 OSHA = "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.147"
 

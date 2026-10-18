@@ -1,8 +1,8 @@
 import json
 
-from torque.llm.diagnose import citation_valid, parse_transcript, validate
-from torque.llm.client import extract_json
-from torque.schemas import errors
+from truefield.llm.diagnose import citation_valid, parse_transcript, validate
+from truefield.llm.client import extract_json
+from truefield.schemas import errors
 
 GOOD = {"event_id": "EV-1", "status": "diagnosed", "likely_cause": "outer race", "confidence": 0.8, "evidence": ["env_bpfo z=9"],
         "citations": [{"doc": "asset-PUMP-07.md", "locator": "§2", "quote": "BPFO 236 Hz"}], "recommended_actions": ["Replace bearing"],

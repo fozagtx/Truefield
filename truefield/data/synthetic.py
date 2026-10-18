@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
-from torque.anomaly.features import FAULT_FREQS_HZ, FS_HZ, N_POINTS
+from truefield.anomaly.features import FAULT_FREQS_HZ, FS_HZ, N_POINTS
 
 IMS_SET2_START = datetime(2004, 2, 12, 10, 32, 39)
 

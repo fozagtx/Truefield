@@ -4,10 +4,10 @@ import json
 import httpx
 import pytest
 
-from torque.config import get_settings
-from torque.evolus import agent, extractor, library, tools, workflow
-from torque.evolus import client as client_mod
-from torque.evolus.client import EvolusClient, EvolusError
+from truefield.config import get_settings
+from truefield.evolus import agent, extractor, library, tools, workflow
+from truefield.evolus import client as client_mod
+from truefield.evolus.client import EvolusClient, EvolusError
 
 
 @pytest.fixture

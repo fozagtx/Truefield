@@ -2,8 +2,8 @@ import time
 
 import numpy as np
 
-from torque.anomaly.features import FS_HZ, N_POINTS, extract_features, spectral_bands
-from torque.data.synthetic import generate
+from truefield.anomaly.features import FS_HZ, N_POINTS, extract_features, spectral_bands
+from truefield.data.synthetic import generate
 
 
 def test_sine_known_values():

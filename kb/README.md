@@ -1,4 +1,4 @@
-# Knowledge library (`torque-kb`) sources
+# Knowledge library (`truefield-kb`) sources
 
 | File | Content | Origin |
 |---|---|---|

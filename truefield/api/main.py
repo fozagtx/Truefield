@@ -1,4 +1,4 @@
-"""Torque FastAPI orchestrator: /replay, /telemetry, /events, /wo, /callback/evolus, /closeout, /kpi, /bench."""
+"""Truefield FastAPI orchestrator: /replay, /telemetry, /events, /wo, /callback/evolus, /closeout, /kpi, /bench."""
 from __future__ import annotations
 
 import json
@@ -10,12 +10,12 @@ from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from torque import kpi
-from torque.config import REPO_ROOT, Settings, get_settings
-from torque.pipeline import ASSETS, Torque
+from truefield import kpi
+from truefield.config import REPO_ROOT, Settings, get_settings
+from truefield.pipeline import ASSETS, Truefield
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-log = logging.getLogger("torque.api")
+log = logging.getLogger("truefield.api")
 
 
 class ApproveBody(BaseModel):
@@ -39,18 +39,18 @@ def create_app(settings: Settings | None = None, eval_in_background: bool = True
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         s = settings or get_settings()
-        t = Torque(s)
+        t = Truefield(s)
         holder["t"] = t
-        log.info("Torque ready: %s", t.modes())
+        log.info("Truefield ready: %s", t.modes())
         if eval_in_background:
             threading.Thread(target=kpi.evaluate_lead_time, args=(t,), daemon=True).start()
         yield
         t.stop_replay()
 
-    app = FastAPI(title="Torque API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Truefield API", version="0.1.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-    def T() -> Torque:
+    def T() -> Truefield:
         return holder["t"]
 
     @app.get("/health")
@@ -205,9 +205,9 @@ def create_app(settings: Settings | None = None, eval_in_background: bool = True
 
     # ---------------- Evolus workflow callback
     @app.post("/callback/evolus")
-    async def callback(request: Request, x_torque_key: str | None = Header(default=None)):
+    async def callback(request: Request, x_truefield_key: str | None = Header(default=None)):
         t = T()
-        if t.s.callback_key and x_torque_key != t.s.callback_key:
+        if t.s.callback_key and x_truefield_key != t.s.callback_key:
             raise HTTPException(401, "bad callback key")
         try:
             data = await request.json()

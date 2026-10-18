@@ -1,7 +1,7 @@
 """OpenAI-compatible chat for the diagnosis layer.
 
 Backends (LLM_PROVIDER=auto picks the first configured):
-  evolus : Evolus agent "Torque Diagnostician" (its model = our vLLM Gemma on AMD) via EVOLUS_CHAT_BASE
+  evolus : Evolus agent "Truefield Diagnostician" (its model = our vLLM Gemma on AMD) via EVOLUS_CHAT_BASE
   vllm   : our vLLM Gemma endpoint directly (VLLM_BASE_URL, VLLM_API_KEY, VLLM_MODEL)
   mock   : deterministic local responder so the demo runs end to end offline
 DEMO_CACHE=1 replays recorded responses from DATA_DIR/demo_cache (labelled "cached").
@@ -16,11 +16,11 @@ from pathlib import Path
 
 import httpx
 
-from torque.config import Settings
-from torque.evolus import agent as evolus_agent
-from torque.evolus.client import EvolusClient
+from truefield.config import Settings
+from truefield.evolus import agent as evolus_agent
+from truefield.evolus.client import EvolusClient
 
-log = logging.getLogger("torque.llm")
+log = logging.getLogger("truefield.llm")
 PROMPTS = Path(__file__).resolve().parent.parent / "prompts"
 
 

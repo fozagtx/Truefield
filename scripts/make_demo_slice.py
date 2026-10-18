@@ -1,7 +1,7 @@
 """Preprocess IMS Set 2 (bearing 1 channel) into a compact demo slice: DATA_DIR/demo/ims_set2_b1.npz.
 
   python scripts/make_demo_slice.py --stride 2      # 492 snapshots, float16, ~20 MB (not committed)
-The app picks it up automatically (TORQUE_DATASET=auto). Retrain the AE after changing it.
+The app picks it up automatically (TRUEFIELD_DATASET=auto). Retrain the AE after changing it.
 """
 import argparse
 import sys
@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from torque.data.dataset import load_raw_ims  # noqa: E402
+from truefield.data.dataset import load_raw_ims  # noqa: E402
 
 
 def main():

@@ -1,4 +1,4 @@
-# Torque deterministic rules (PRD §14). Thresholds are z-scores against the healthy baseline
+# Truefield deterministic rules (PRD §14). Thresholds are z-scores against the healthy baseline
 # (first 40% of the record), because IMS data is acceleration in g without calibrated velocity.
 version: 1
 severity:

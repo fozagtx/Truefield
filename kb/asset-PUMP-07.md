@@ -1,6 +1,6 @@
 # Asset sheet: PUMP-07 / BRG-1 (demo rig modelled on the NASA IMS bearing test rig)
 
-> Demo asset sheet written for Torque. Rig data from the IMS Bearing Data Set readme (Lee et al., 2007, NASA PCoE).
+> Demo asset sheet written for Truefield. Rig data from the IMS Bearing Data Set readme (Lee et al., 2007, NASA PCoE).
 > Plant-specific fields (tag numbers, MCC, part numbers) are SYNTHETIC for the demo.
 
 ## 1. Description

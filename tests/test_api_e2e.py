@@ -13,8 +13,8 @@ def client(tmp_path_factory):
     os.environ["DATA_DIR"] = str(d)
     os.environ["MODEL_PATH"] = str(d / "ae-v1.pt")
     os.environ["AUTO_PIPELINE"] = "0"
-    from torque.api.main import create_app
-    from torque.config import get_settings
+    from truefield.api.main import create_app
+    from truefield.config import get_settings
     app = create_app(get_settings(), eval_in_background=False)
     with TestClient(app) as c:
         yield c

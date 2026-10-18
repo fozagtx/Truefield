@@ -6,4 +6,4 @@ RUN pip install --index-url https://download.pytorch.org/whl/cpu torch \
  && pip install -r requirements.txt
 COPY . .
 EXPOSE 8080 8501
-CMD ["uvicorn", "torque.api.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "truefield.api.main:app", "--host", "0.0.0.0", "--port", "8080"]

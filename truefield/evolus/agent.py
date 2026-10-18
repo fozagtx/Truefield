@@ -3,7 +3,7 @@ with model "<applicationId>:<agentId>"; keep X-Conversation-Id for follow-ups. T
 agent settings in the workspace (request params like temperature are ignored)."""
 from __future__ import annotations
 
-from torque.evolus.client import EvolusClient
+from truefield.evolus.client import EvolusClient
 
 
 def list_models(c: EvolusClient) -> list:
