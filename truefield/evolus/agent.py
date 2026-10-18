@@ -7,7 +7,7 @@ from truefield.evolus.client import EvolusClient
 
 
 def list_models(c: EvolusClient) -> list:
-    if c.mock:
+    if c.require("agent.list_models", "/models") == "mock":
         c.audit_mock("agent.list_models", "/models")
         return [{"id": "mock-app:mock-agent"}]
     r = c.request("agent.list_models", "GET", "/models", base="chat")

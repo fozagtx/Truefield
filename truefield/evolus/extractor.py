@@ -59,7 +59,7 @@ def ask_file(c: EvolusClient, content: bytes, filename: str, mime: str = "applic
     agent = c.s.evolus_extractor_agent_id or c.s.evolus_agent_id
     ext = c.s.evolus_extractor_id
     path = f"/agents/{agent}/json/{ext}/ask-file?useWebhook=false"
-    if c.mock or not (agent and ext):
+    if c.require("extractor.ask_file", path, agent, ext) == "mock":
         c.audit_mock("extractor.ask_file", path, filename)
         try:
             parsed = parse_form_text(content.decode("utf-8"))

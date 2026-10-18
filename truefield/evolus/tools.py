@@ -14,7 +14,7 @@ SAMPLE_TRANSCRIPT = (
 
 
 def list_tools(c: EvolusClient) -> list:
-    if c.mock:
+    if c.require("tools.list", "/ai-tools") == "mock":
         c.audit_mock("tools.list", "/ai-tools")
         return [{"slug": s} for s in ("minutes", "translate", "anonymize")]
     r = c.request("tools.list", "GET", "/ai-tools")
@@ -24,7 +24,7 @@ def list_tools(c: EvolusClient) -> list:
 
 def run(c: EvolusClient, slug: str, text: str, options: dict | None = None) -> dict:
     path = f"/ai-tools/{slug}/run"
-    if c.mock:
+    if c.require("tools.run", path) == "mock":
         c.audit_mock("tools.run", path, slug)
         return {"output": text, "mock": True}
     # TODO: confirm in workspace API reference - body field names ("text"/"input", "options").
@@ -35,7 +35,7 @@ def run(c: EvolusClient, slug: str, text: str, options: dict | None = None) -> d
 def run_media(c: EvolusClient, slug: str, content: bytes, filename: str, mime: str = "audio/mp4", options: dict | None = None) -> dict:
     """For the voice note: returns transcript in `sourceText`, minutes/summary in `output` (per PRD)."""
     path = f"/ai-tools/{slug}/run-media"
-    if c.mock:
+    if c.require("tools.run_media", path) == "mock":
         c.audit_mock("tools.run_media", path, filename)
         try:
             txt = content.decode("utf-8") if filename.endswith(".txt") else SAMPLE_TRANSCRIPT
@@ -50,7 +50,7 @@ def run_media(c: EvolusClient, slug: str, content: bytes, filename: str, mime: s
 
 def run_file(c: EvolusClient, slug: str, content: bytes, filename: str, options: dict | None = None) -> bytes | dict:
     path = f"/ai-tools/{slug}/run-file"
-    if c.mock:
+    if c.require("tools.run_file", path) == "mock":
         c.audit_mock("tools.run_file", path, filename)
         return content
     r = c.request("tools.run_file", "POST", path, files={"file": (filename, content)}, data={"options": json.dumps(options or {})})

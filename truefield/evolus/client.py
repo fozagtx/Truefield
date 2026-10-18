@@ -3,7 +3,9 @@
 Headers (verified on evolus.ai/developers):
   REST:  X-ApiKey + X-Application-Id
   Chat:  Authorization: Bearer <EVOLUS_API_KEY>
-Mock mode is on whenever EVOLUS_API_KEY is empty; every call (live or mock) is written to audit_log.
+Mock responses only when MOCK=1 (or LLM_PROVIDER=mock) and no key. Without a key and without MOCK, Evolus steps
+raise EvolusNotConfigured and the pipeline skips them with an explicit 'not configured' status.
+Every call (live, mock or skipped) is written to audit_log.
 """
 from __future__ import annotations
 
@@ -25,6 +27,10 @@ class EvolusError(RuntimeError):
         self.body = body
 
 
+class EvolusNotConfigured(EvolusError):
+    """Raised instead of returning fake data when Evolus (or a specific resource id) is not configured."""
+
+
 class EvolusClient:
     def __init__(self, settings: Settings, store=None):
         self.s = settings
@@ -32,7 +38,21 @@ class EvolusClient:
 
     @property
     def mock(self) -> bool:
-        return not self.s.evolus_enabled
+        return self.s.mock and not self.s.evolus_enabled
+
+    def mode(self, *ids: str) -> str:
+        """'mock' (explicit MOCK only) | 'live' (key + all resource ids) | 'not configured'."""
+        if self.mock:
+            return "mock"
+        return "live" if self.s.evolus_enabled and all(ids) else "not configured"
+
+    def require(self, op: str, path: str, *ids: str) -> str:
+        """Return the mode; if not configured, audit the skip and raise EvolusNotConfigured."""
+        m = self.mode(*ids)
+        if m == "not configured":
+            self.audit(op, "SKIP", path, None, 0.0, "not configured", "Evolus not configured")
+            raise EvolusNotConfigured(f"Evolus not configured: {op} skipped (set EVOLUS_API_KEY and the resource id)")
+        return m
 
     def rest_headers(self) -> dict:
         h = {"X-ApiKey": self.s.evolus_api_key}

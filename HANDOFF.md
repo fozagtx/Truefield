@@ -7,8 +7,8 @@ Truefield is a maintenance copilot for factory technicians. It detects an early 
 | Part | Works out of the box | Needs your config |
 |---|---|---|
 | Features, rules engine, autoencoder, work-order / approval / close-out flow, UI, SQLite | ✅ (CPU) | – |
-| LLM diagnosis + WO drafting | mock (deterministic) | `MODEL_ACCESS_KEY` → live `gpt-4o` at `https://inference.do-ai.run/v1` |
-| Evolus library, workflow, extractor, AI Tool `minutes` | mock (logged as `mock`) | Evolus IDs in `.env` |
+| LLM diagnosis + WO drafting | – (**required**; the API won't start without it) | `MODEL_ACCESS_KEY` → live `gpt-4o` at `https://inference.do-ai.run/v1` |
+| Evolus library, workflow, extractor, AI Tool `minutes` | skipped, shown as `not configured` (WO drafted by the LLM, close-out fields entered manually) | Evolus IDs in `.env` |
 | Vibration data | synthetic fallback (labelled) | real NASA IMS via `scripts/download_ims.sh` |
 | Temperature channel | **always synthetic** (labelled) | – |
 | GPU training / benchmarks | CPU numbers only | AMD MI300X droplet |
@@ -41,13 +41,13 @@ On first start the API trains the autoencoder on CPU (seconds) and saves it to `
 ## Verify
 
 ```bash
-curl -s localhost:8080/health          # modes.llm = "do" with a key ("mock" without); modes.llm_model = "gpt-4o"
+curl -s localhost:8080/health          # modes.llm = "do", modes.llm_model = "gpt-4o"; Evolus blocks "live" or "not configured"
 curl -s -X POST "localhost:8080/replay/start?speed=50&start_frac=0.6"
-sleep 10 && curl -s localhost:8080/wo  # one work order, status "pending_approval", drafted_by "agent_direct:do" (live) or "mock_workflow"
+sleep 10 && curl -s localhost:8080/wo  # one work order, status "pending_approval", drafted_by "evolus_workflow" or "agent_direct:do (Evolus workflow not configured)"
 curl -s localhost:8080/audit           # every LLM / Evolus call, with its status and latency
 ```
 
-Tests: `MOCK=1 pytest -q` (53 tests, no network).
+Tests: `MOCK=1 pytest -q` (56 tests, no network). `MOCK=1` is the **only** way to get mock responses; never set it in a real deployment.
 
 ## Evolus checklist
 
@@ -96,8 +96,9 @@ Data and weights are git-ignored; never commit them.
 
 | Symptom | Fix |
 |---|---|
-| `RuntimeError: LLM_PROVIDER=do but MODEL_ACCESS_KEY is empty` at startup | Set `MODEL_ACCESS_KEY` in `.env`, or remove `LLM_PROVIDER`; `auto` falls back to mock |
-| UI badge says `MOCK` although you set a key | `.env` not loaded: with uvicorn, `set -a && . ./.env && set +a`; with compose, restart with `docker compose up -d --force-recreate`. `MOCK=1` also forces mock |
+| API exits at startup: `MODEL_ACCESS_KEY is not set. Set it in .env (or MOCK=1 for tests only).` | Set `MODEL_ACCESS_KEY` in `.env` and make sure it is loaded (see next row). There is no automatic mock fallback |
+| Key set but startup still fails, or UI shows `MOCK` | `.env` not loaded: with uvicorn, `set -a && . ./.env && set +a`; with compose, `docker compose up -d --force-recreate`. `MOCK` shows only if `MOCK=1` is set somewhere; remove it |
+| Evolus shows `not configured` | Set `EVOLUS_API_KEY`, `EVOLUS_APP_ID` and the resource IDs; each block turns `live` once its ID is present |
 | `env_file` / `required` error from compose | Upgrade to Docker Compose ≥ 2.24 |
 | Diagnosis shows `needs_human` / "model offline" | Check `GET /audit` for the HTTP status (401 = bad key, 404 = wrong `MODEL_NAME` or base URL) |
 | Endpoint rejects `response_format` | Handled automatically: the request is retried without it |

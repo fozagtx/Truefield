@@ -15,24 +15,31 @@ Truefield works in four steps:
 
 ---
 
-## Quickstart (mock mode, no keys, about 2 minutes)
+## Quickstart
 
 ```bash
 git clone https://github.com/fozagtx/Truefield && cd Truefield
+cp .env.example .env            # set MODEL_ACCESS_KEY (required)
 docker compose up --build
 # UI  -> http://localhost:8501     API -> http://localhost:8080/docs
 ```
 
-With no `.env`, every external call runs in **mock mode**: the diagnosis model, the Evolus workflow, extractor, AI Tools and library. Mock calls are still written to the audit log and labelled `mock` in the UI. On first start the API trains the autoencoder on the CPU (a few seconds) and saves `models/ae-v1.pt`.
+There is **no silent mock fallback**. Without `MODEL_ACCESS_KEY` (or another configured LLM provider), the API refuses to start: `MODEL_ACCESS_KEY is not set. Set it in .env (or MOCK=1 for tests only).` Evolus is optional. Without `EVOLUS_API_KEY`, the Evolus steps are skipped and reported as `not configured` in `/health` and the UI:
+- work orders are drafted directly by the LLM;
+- close-out fields are entered manually;
+- the closed work order is kept locally instead of being uploaded.
+
+Mock responses exist only for tests and offline development, and only with `MOCK=1`. On first start the API trains the autoencoder on the CPU (a few seconds) and saves `models/ae-v1.pt`.
 
 **Without Docker:**
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install --index-url https://download.pytorch.org/whl/cpu torch && pip install -r requirements.txt
+set -a && . ./.env && set +a
 uvicorn truefield.api.main:app --port 8080 &
 TRUEFIELD_API_URL=http://localhost:8080 streamlit run ui/app.py
-pytest -q                       # 44 tests: rules (100% branch coverage), features, schemas, LLM layer, Evolus client, end-to-end API
+MOCK=1 pytest -q                # 56 tests, no network: rules (100% branch coverage), features, schemas, LLM providers, Evolus client, end-to-end API
 ```
 
 ---
@@ -80,7 +87,7 @@ flowchart LR
 | Anomaly model (FR-3) | `truefield/anomaly/{model,train,score}.py`: AE 32→16→4→16→32 on log-FFT bands, trained on the first 40% (healthy); threshold is the p99.5 of the healthy error; 3-snapshot debounce. Device auto-detect: `cuda` (ROCm/HIP or CUDA), else CPU |
 | Rules (FR-4) | `truefield/rules/{rules.yaml,engine.py}`: R-SEV-1..4, R-HYP-1..3, R-RISK, R-ROUTE, R-SAFE-1..3, R-PRI |
 | LLM (FR-5) | `truefield/llm/{client,diagnose}.py`: OpenAI-compatible; primary = `MODEL_BASE_URL` with `MODEL_ACCESS_KEY` (system prompt sent as role `developer`; `response_format` JSON mode, dropped automatically if the endpoint rejects it); optional Evolus agent or vLLM; schema validation, one repair retry, then `needs_human`; citation docs checked against the library |
-| Evolus (FR-6/8/9) | `truefield/evolus/{client,agent,library,workflow,extractor,tools}.py`: timeout + one retry, audit log, mock mode with no key |
+| Evolus (FR-6/8/9) | `truefield/evolus/{client,agent,library,workflow,extractor,tools}.py`: timeout + one retry, audit log; without a key the steps are skipped as `not configured` (fake responses only with `MOCK=1`) |
 | Orchestration | `truefield/pipeline.py`, `truefield/api/main.py`, `truefield/store/db.py`, `truefield/kpi.py` |
 | UI | `ui/app.py` (Streamlit) |
 
@@ -106,12 +113,7 @@ flowchart LR
 
 ### 1. Primary LLM (one key)
 
-```bash
-cp .env.example .env      # set MODEL_ACCESS_KEY (MODEL_BASE_URL / MODEL_NAME default to https://inference.do-ai.run/v1 and gpt-4o)
-docker compose up --build
-```
-
-With `MODEL_ACCESS_KEY` set, diagnosis and work-order drafting use the live model. The UI badge shows the model name. Evolus blocks stay in mock mode until you configure them.
+Set `MODEL_ACCESS_KEY` in `.env`. `MODEL_BASE_URL` and `MODEL_NAME` default to `https://inference.do-ai.run/v1` and `gpt-4o`. Diagnosis and work-order drafting use this model, and the UI badge shows its name.
 
 ### 2. Evolus event workspace (optional)
 
@@ -139,17 +141,17 @@ python bench/collect_results.py                    # -> bench/results.json (Benc
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `MODEL_ACCESS_KEY` | Bearer key for the primary LLM API; empty → mock LLM | |
+| `MODEL_ACCESS_KEY` | Bearer key for the primary LLM API; **required** (the API won't start without it) | |
 | `MODEL_BASE_URL` | OpenAI-compatible base URL | `https://inference.do-ai.run/v1` |
 | `MODEL_NAME` | model | `gpt-4o` |
-| `EVOLUS_API_KEY` | Evolus key; empty → all Evolus calls run in mock mode | |
+| `EVOLUS_API_KEY` | Evolus key; empty → Evolus steps skipped (`not configured`) | |
 | `EVOLUS_APP_ID` | space ID → `X-Application-Id` | |
 | `EVOLUS_AGENT_ID` | Truefield Diagnostician agent (chat model `<appId>:<agentId>` and extractor owner are derived) | |
 | `EVOLUS_WORKFLOW_ID` | Draft Work Order workflow | |
 | `EVOLUS_EXTRACTOR_ID` | close-out extractor | |
 | `EVOLUS_LIBRARY_ID` | knowledge library | |
 
-Everything else has a code default in `truefield/config.py` and can still be overridden with an env var. Examples: `LLM_PROVIDER` (`auto`/`do`/`evolus`/`vllm`/`mock`), `VLLM_BASE_URL`, `VLLM_API_KEY`, `PUBLIC_BASE_URL`, `DEMO_CACHE`, `COST_PER_HOUR_USD`, `TRUEFIELD_DATASET`.
+Everything else has a code default in `truefield/config.py` and can still be overridden with an env var. Examples: `MOCK=1` (tests only), `LLM_PROVIDER` (`auto`/`do`/`evolus`/`vllm`), `VLLM_BASE_URL`, `VLLM_API_KEY`, `PUBLIC_BASE_URL`, `DEMO_CACHE`, `COST_PER_HOUR_USD`, `TRUEFIELD_DATASET`.
 
 ### Evolus endpoints still to confirm
 
@@ -164,7 +166,7 @@ Every unverified endpoint shape is isolated in `truefield/evolus/*.py` and marke
 
 ## Benchmarks
 
-`bench/results.json` is rendered on the Bench tab and at `GET /bench`. The numbers committed now are a **CPU-only run from the dev box, in mock mode**. Replace them with MI300X numbers from `deploy/train_rocm.sh`, `bench/vllm_bench.sh` and `bench/e2e_latency.py` against the live stack. The autoencoder is deliberately tiny, so CPU inference is already sub-millisecond. The GPU's main job on AMD is serving Gemma 4 and training at scale.
+`bench/results.json` is rendered on the Bench tab and at `GET /bench`. The numbers committed now are a **CPU-only run from the dev box, with `MOCK=1`**. Replace them with MI300X numbers from `deploy/train_rocm.sh`, `bench/vllm_bench.sh` and `bench/e2e_latency.py` against the live stack. The autoencoder is deliberately tiny, so CPU inference is already sub-millisecond. The GPU's main job on AMD is serving Gemma 4 and training at scale.
 
 Lead time: `python scripts/eval_leadtime.py` replays the whole record and compares Truefield's first alert with a naive 2× healthy-RMS alarm. On the synthetic fallback, Truefield alerts 15.8 h before the end of the record, against 8.3 h for the naive alarm. **Run it on the real IMS data and quote those numbers instead.**
 

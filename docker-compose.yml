@@ -1,4 +1,4 @@
-# Truefield app: api (FastAPI orchestrator) + ui (Streamlit). Runs in mock mode with no .env.
+# Truefield app: api (FastAPI orchestrator) + ui (Streamlit). Requires .env with MODEL_ACCESS_KEY.
 services:
   api:
     build: .

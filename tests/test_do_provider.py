@@ -36,13 +36,14 @@ def ok(content):
 
 
 def test_defaults_and_auto_selection(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "auto")
     monkeypatch.setenv("MOCK", "1")
     monkeypatch.setenv("MODEL_ACCESS_KEY", KEY)
     assert get_settings().llm_mode == "mock"  # MOCK=1 forces mock even with a key
     monkeypatch.delenv("MOCK")
     monkeypatch.delenv("MODEL_ACCESS_KEY")
     s = get_settings()
-    assert s.llm_mode == "mock"  # no key -> mock
+    assert s.llm_mode == "none" and not s.mock  # no key and no MOCK -> nothing (startup fails), never mock
     assert s.model_base_url == "https://inference.do-ai.run/v1" and s.model_name == "gpt-4o"
     monkeypatch.setenv("MODEL_ACCESS_KEY", KEY)
     monkeypatch.setenv("LLM_PROVIDER", "auto")
@@ -140,20 +141,60 @@ def test_pipeline_drafts_wo_with_primary_llm(do_env, tmp_path, monkeypatch):
               "loto": [], "parts": [{"part_no": "BRG-ZA2115", "qty": 1}, {"part_no": "INVENTED-1", "qty": 9}]}
     replies += [ok(json.dumps(dx)), ok(json.dumps(wo_llm))]
     wo = t.draft_work_order(ev["event_id"])
-    assert wo["drafted_by"] == "agent_direct:do"
+    assert wo["drafted_by"].startswith("agent_direct:do")
     assert [p["part_no"] for p in wo["parts"]] == ["BRG-ZA2115"]
     assert {x["energy_source"] for x in wo["loto"]} >= {"electrical", "mechanical"}
     assert "R-ROUTE-1:uncited_step" in wo["approval"]["reasons"] and wo["status"] == "pending_approval"
     assert any("LOTO" in g for g in wo["guardrails"]) and any("parts" in g for g in wo["guardrails"])
     roles = [m["role"] for m in json.loads(seen[-1].content)["messages"]]
     assert roles == ["developer", "user"]
+    # health modes: live LLM, Evolus explicitly "not configured" (never "mock")
+    m = t.modes()
+    assert m["llm"] == "do" and m["evolus"] == m["workflow"] == m["extractor"] == m["library"] == "not configured"
+    assert "not configured" in wo["drafted_by"]
+    # close-out without Evolus: binary photo -> nothing extracted, manual fields required; then manual entry closes it
+    t.approve(wo["wo_id"], "giulia", "approved")
+    r = t.closeout(wo["wo_id"], "photo", "p.jpg", b"\xff\xd8binary", "image/jpeg")
+    assert r["closed"] is False and r["evolus"] == "not configured" and "Evolus not configured" in r["prompt"]
+    r = t.closeout(wo["wo_id"], "photo", "p.jpg", b"\xff\xd8binary", "image/jpeg",
+                   {"technician": "K", "root_cause_confirmed": "outer race", "actions_done": ["replaced"], "loto_removed_by": "K"})
+    assert r["closed"] is True and r["library"]["status"] == "Evolus not configured"
 
 
-def test_fail_fast_when_do_forced_without_key(monkeypatch, tmp_path):
+@pytest.mark.parametrize("provider", ["auto", "do"])
+def test_fail_fast_without_key_and_without_mock(monkeypatch, tmp_path, provider):
     monkeypatch.delenv("MOCK", raising=False)
     monkeypatch.delenv("MODEL_ACCESS_KEY", raising=False)
-    monkeypatch.setenv("LLM_PROVIDER", "do")
+    monkeypatch.setenv("LLM_PROVIDER", provider)
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
-    from truefield.pipeline import Truefield
-    with pytest.raises(RuntimeError, match="MODEL_ACCESS_KEY"):
+    from truefield.pipeline import Truefield, NO_LLM_ERROR
+    assert NO_LLM_ERROR == "MODEL_ACCESS_KEY is not set. Set it in .env (or MOCK=1 for tests only)."
+    with pytest.raises(RuntimeError) as e:
         Truefield(get_settings())
+    assert str(e.value) == NO_LLM_ERROR
+
+
+def test_api_startup_fails_without_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("MOCK", raising=False)
+    monkeypatch.delenv("MODEL_ACCESS_KEY", raising=False)
+    monkeypatch.setenv("LLM_PROVIDER", "auto")
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    from fastapi.testclient import TestClient
+    from truefield.api.main import create_app
+    with pytest.raises(RuntimeError, match="MODEL_ACCESS_KEY is not set"):
+        with TestClient(create_app(get_settings(), eval_in_background=False)):
+            pass
+
+
+def test_evolus_not_configured_never_fakes(monkeypatch):
+    from truefield.evolus import extractor, library, tools, workflow
+    from truefield.evolus.client import EvolusNotConfigured
+    monkeypatch.delenv("MOCK", raising=False)
+    monkeypatch.setenv("LLM_PROVIDER", "auto")
+    monkeypatch.delenv("EVOLUS_API_KEY", raising=False)
+    c = EvolusClient(get_settings())
+    assert not c.mock and c.mode() == "not configured"
+    for call in (lambda: workflow.execute(c, "x", {}), lambda: extractor.ask_file(c, b"x", "a.jpg"),
+                 lambda: tools.run_media(c, "minutes", b"x", "a.m4a"), lambda: library.upload_document(c, "a.md", b"x")):
+        with pytest.raises(EvolusNotConfigured):
+            call()

@@ -15,7 +15,7 @@ _MOCK_RESULTS: dict[str, dict] = {}
 def execute(c: EvolusClient, input_text: str, parameters: dict, callback_url: str | None = None, mock_output: dict | None = None) -> str:
     wf = c.s.evolus_workflow_id
     path = f"/workflows/{wf}/execute"
-    if c.mock or not wf:
+    if c.require("workflow.execute", path, wf) == "mock":
         eid = f"mock-exec-{uuid.uuid4().hex[:8]}"
         _MOCK_RESULTS[eid] = {"executionId": eid, "status": "Completed", "output": json.dumps(mock_output or {})}
         c.audit_mock("workflow.execute", path, f"params={parameters}")

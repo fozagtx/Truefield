@@ -17,7 +17,7 @@ from truefield.evolus import extractor as evx
 from truefield.evolus import library as evlib
 from truefield.evolus import tools as evtools
 from truefield.evolus import workflow as evwf
-from truefield.evolus.client import EvolusClient, EvolusError
+from truefield.evolus.client import EvolusClient, EvolusError, EvolusNotConfigured
 from truefield.llm.client import chat, extract_json, prompt
 from truefield.llm.diagnose import diagnose, map_voice_transcript
 from truefield.rules import engine
@@ -50,10 +50,23 @@ class ReplayState:
         self.stop_flag = threading.Event()
 
 
+NO_LLM_ERROR = "MODEL_ACCESS_KEY is not set. Set it in .env (or MOCK=1 for tests only)."
+
+
+def check_llm_configured(s: Settings) -> None:
+    """Fail fast: never fall back to mock silently. Mock only with MOCK=1 / LLM_PROVIDER=mock."""
+    mode = s.llm_mode
+    if mode == "none" or (mode == "do" and not s.model_access_key):
+        raise RuntimeError(NO_LLM_ERROR)
+    if mode == "vllm" and not s.vllm_base_url:
+        raise RuntimeError("LLM_PROVIDER=vllm but VLLM_BASE_URL is not set.")
+    if mode == "evolus" and not (s.evolus_api_key and s.evolus_agent_model):
+        raise RuntimeError("LLM_PROVIDER=evolus but EVOLUS_API_KEY / EVOLUS_APP_ID / EVOLUS_AGENT_ID are not set.")
+
+
 class Truefield:
     def __init__(self, s: Settings):
-        if s.llm_provider == "do" and not s.model_access_key:
-            raise RuntimeError("LLM_PROVIDER=do but MODEL_ACCESS_KEY is empty: set it in .env (or use LLM_PROVIDER=auto for mock fallback)")
+        check_llm_configured(s)
         self.s = s
         self.store = Store(s.data_dir / "truefield.db")
         self.ec = EvolusClient(s, self.store)
@@ -70,10 +83,11 @@ class Truefield:
         return {
             "llm": self.s.llm_mode + (" (cached)" if self.s.demo_cache else ""),
             "llm_model": {"do": self.s.model_name, "vllm": self.s.vllm_model, "evolus": self.s.evolus_agent_model}.get(self.s.llm_mode, "mock"),
-            "evolus": "mock" if self.ec.mock else "live",
-            "workflow": "live" if (not self.ec.mock and self.s.evolus_workflow_id) else "mock",
-            "extractor": "live" if (not self.ec.mock and self.s.evolus_extractor_id) else "mock",
-            "library": "live" if (not self.ec.mock and self.s.evolus_library_id) else "mock",
+            "evolus": self.ec.mode(),
+            "workflow": self.ec.mode(self.s.evolus_workflow_id),
+            "extractor": self.ec.mode(self.s.evolus_extractor_agent_id, self.s.evolus_extractor_id),
+            "library": self.ec.mode(self.s.evolus_library_id),
+            "voice_tool": self.ec.mode(),
             "anomaly_device": self.scorer.device_name,
             "model_trained_on_device": self.scorer.meta.get("device"),
             "data_source": self.ds.source,
@@ -294,10 +308,8 @@ class Truefield:
         params = {"asset_id": ev["asset_id"], "route": ev["rules"]["route"]}  # no secrets in parameters
         callback = f"{self.s.public_base_url}/callback/evolus" if self.s.public_base_url else None
         raw, source, exec_id = None, None, None
-        workflow_live = not self.ec.mock and bool(self.s.evolus_workflow_id)
+        wf_status = self.ec.mode(self.s.evolus_workflow_id)
         try:
-            if not workflow_live and self.s.llm_mode != "mock":
-                raise EvolusError("Evolus workflow not configured; drafting with the primary LLM")
             exec_id = evwf.execute(self.ec, input_text, params, callback, mock_output=self.deterministic_draft(ev, dx))
             res = evwf.wait(self.ec, exec_id, self.store)
             raw = extract_json(evwf.output_text(res))
@@ -313,6 +325,8 @@ class Truefield:
             except Exception as e2:  # last resort: deterministic draft
                 log.warning("agent drafting failed (%s); deterministic draft", e2)
                 raw, source = self.deterministic_draft(ev, dx), "deterministic"
+        if wf_status == "not configured":
+            source = f"{source} (Evolus workflow not configured)"
         if isinstance(raw, dict) and "steps" not in raw and isinstance(raw.get("work_order"), dict):
             raw = raw["work_order"]
         try:
@@ -409,15 +423,31 @@ class Truefield:
         if source not in ("photo", "pdf", "voice"):
             raise ValueError("source must be photo|pdf|voice")
         transcript = None
+        evolus_status = "live"
+        try:
+            text = content.decode("utf-8") if filename.lower().endswith(".txt") else None
+        except UnicodeDecodeError:
+            text = None
+        try:
+            if source == "voice":
+                res = evtools.run_media(self.ec, self.s.evolus_minutes_tool, content, filename, mime or "audio/mp4")
+                transcript = res.get("sourceText") or res.get("transcript") or ""
+                raw_ref = res.get("executionId") or res.get("id") or ("mock" if res.get("mock") else None)
+            else:
+                res = evx.ask_file(self.ec, content, filename, mime or ("application/pdf" if source == "pdf" else "image/jpeg"))
+                fields = res.get("result") or {}
+                raw_ref = (res.get("raw") or {}).get("id") if isinstance(res.get("raw"), dict) else ("mock" if res.get("mock") else None)
+            if res.get("mock"):
+                evolus_status = "mock"
+        except EvolusNotConfigured:
+            # No fake extraction: only a plain-text upload is read as-is; otherwise the technician fills the fields.
+            evolus_status, raw_ref = "not configured", None
+            if source == "voice":
+                transcript = text or ""
+            else:
+                fields = evx.parse_form_text(text) if text else {}
         if source == "voice":
-            res = evtools.run_media(self.ec, self.s.evolus_minutes_tool, content, filename, mime or "audio/mp4")
-            transcript = res.get("sourceText") or res.get("transcript") or ""
-            fields = map_voice_transcript(self.s, self.ec, transcript, self.store)
-            raw_ref = res.get("executionId") or res.get("id") or ("mock" if res.get("mock") else None)
-        else:
-            res = evx.ask_file(self.ec, content, filename, mime or ("application/pdf" if source == "pdf" else "image/jpeg"))
-            fields = res.get("result") or {}
-            raw_ref = (res.get("raw") or {}).get("id") if isinstance(res.get("raw"), dict) else ("mock" if res.get("mock") else None)
+            fields = map_voice_transcript(self.s, self.ec, transcript, self.store) if transcript else {}
         fields = {k: v for k, v in fields.items() if v not in (None, "", [])}
         for k, v in (overrides or {}).items():
             if v not in (None, "", []):
@@ -428,8 +458,9 @@ class Truefield:
         missing = [k for k in REQUIRED_CLOSEOUT if not co.get(k)]
         errs = schema_errors("closeout", co) if not missing else []
         if missing or errs:
-            return {"closed": False, "missing": missing, "errors": errs, "draft": co, "transcript": transcript,
-                    "prompt": "Please provide: " + ", ".join(missing) if missing else "Fix: " + "; ".join(errs)}
+            note = " (Evolus not configured: extraction skipped, enter the fields manually)" if evolus_status == "not configured" else ""
+            return {"closed": False, "missing": missing, "errors": errs, "draft": co, "transcript": transcript, "evolus": evolus_status,
+                    "prompt": ("Please provide: " + ", ".join(missing) if missing else "Fix: " + "; ".join(errs)) + note}
         self.store.put_closeout(wo_id, co)
         wo["status"] = "closed"
         wo["closeout"] = co
@@ -441,8 +472,13 @@ class Truefield:
         learned = self.s.data_dir / "kb_learned"
         learned.mkdir(parents=True, exist_ok=True)
         (learned / f"{wo_id}.md").write_text(doc, encoding="utf-8")
-        lib = evlib.upload_document(self.ec, f"{wo_id}.md", doc.encode("utf-8"))  # FR-9 feedback into the library
-        return {"closed": True, "closeout": co, "transcript": transcript, "library": lib, "wo": wo}
+        try:
+            lib = evlib.upload_document(self.ec, f"{wo_id}.md", doc.encode("utf-8"))  # FR-9 feedback into the library
+        except EvolusNotConfigured:
+            lib = {"status": "Evolus not configured", "local_copy": f"kb_learned/{wo_id}.md"}
+        except EvolusError as e:
+            lib = {"status": f"upload failed: {e}"}
+        return {"closed": True, "closeout": co, "transcript": transcript, "library": lib, "evolus": evolus_status, "wo": wo}
 
     @staticmethod
     def _wo_markdown(wo: dict, co: dict) -> str:

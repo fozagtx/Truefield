@@ -38,7 +38,7 @@ st.caption("Turns a vibration spike into a safe, signed-off work order in under 
 b1, b2, b3, b4 = st.columns(4)
 b1.info(f"**Data:** {modes['data_badge']}")
 b2.info(f"**Anomaly model:** ae-v1 on {modes['anomaly_device']}")
-llm_label = {"mock": "MOCK (no MODEL_ACCESS_KEY)", "do": f"{modes.get('llm_model')} via inference API",
+llm_label = {"mock": "MOCK (MOCK=1, tests only)", "do": f"{modes.get('llm_model')} via inference API",
              "vllm": f"{modes.get('llm_model')} on vLLM", "evolus": "Evolus agent"}
 b3.info(f"**Diagnosis model:** {llm_label.get(modes['llm'].split()[0], modes['llm'])}{' · cached' if 'cached' in modes['llm'] else ''}")
 b4.info(f"**Evolus:** {modes['evolus']} (workflow {modes['workflow']}, extractor {modes['extractor']}, library {modes['library']})")

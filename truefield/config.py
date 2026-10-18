@@ -1,7 +1,8 @@
 """Runtime settings, read from environment variables (see .env.example).
 
 Values that still contain a template placeholder such as ``<DROPLET_IP>`` are treated as unset,
-so a copied-but-unfilled .env keeps the app in mock mode instead of failing.
+so a copied-but-unfilled .env counts as not configured (the API then fails fast at startup).
+Mock mode is never automatic: only MOCK=1 or LLM_PROVIDER=mock enables it.
 """
 from __future__ import annotations
 
@@ -60,6 +61,7 @@ class Settings:
     dataset: str
     auto_pipeline: bool
     mock_guardrail_demo: bool
+    mock: bool  # explicit only: MOCK=1 or LLM_PROVIDER=mock
     http_timeout_s: float
 
     @property
@@ -68,10 +70,13 @@ class Settings:
 
     @property
     def llm_mode(self) -> str:
-        """Which backend answers diagnosis calls: do | evolus | vllm | mock.
-        auto: MODEL_ACCESS_KEY set -> do (primary); else Evolus agent; else vLLM; else mock."""
-        p = "mock" if _flag("MOCK") else self.llm_provider  # MOCK=1 forces offline mode
-        if p in {"do", "evolus", "vllm", "mock"}:
+        """Which backend answers diagnosis calls: do | evolus | vllm | mock | none.
+        mock only when explicitly enabled. auto: MODEL_ACCESS_KEY -> do (primary); else Evolus agent; else vLLM;
+        else "none" (the API refuses to start)."""
+        if self.mock:
+            return "mock"
+        p = self.llm_provider
+        if p in {"do", "evolus", "vllm"}:
             return p
         if self.model_access_key:
             return "do"
@@ -79,7 +84,7 @@ class Settings:
             return "evolus"
         if self.vllm_base_url:
             return "vllm"
-        return "mock"
+        return "none"
 
 
 def get_settings() -> Settings:
@@ -122,5 +127,6 @@ def get_settings() -> Settings:
         dataset=_env("TRUEFIELD_DATASET", "auto").lower(),
         auto_pipeline=_flag("AUTO_PIPELINE", "1"),
         mock_guardrail_demo=_flag("MOCK_GUARDRAIL_DEMO", "1"),
+        mock=_flag("MOCK") or _env("LLM_PROVIDER", "auto").lower() == "mock",
         http_timeout_s=float(_env("HTTP_TIMEOUT_S", "30") or 30),
     )
