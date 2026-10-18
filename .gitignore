@@ -1,0 +1,28 @@
+# secrets
+.env
+.env.*
+!.env.example
+# data (never commit datasets)
+data/*
+!data/.gitkeep
+*.npz
+*.parquet
+*.db
+# model weights
+models/*
+!models/.gitkeep
+*.pt
+*.pth
+*.onnx
+*.safetensors
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv*/
+venv/
+*.egg-info/
+.coverage
+# misc
+.DS_Store
+.streamlit/secrets.toml
